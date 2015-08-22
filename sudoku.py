@@ -62,6 +62,56 @@ def getQuadVals(puzzle, quad):
             quad_vals.append(box[0])
     return quad_vals
 
+def checkRowVals(puzzle, values, i, j):
+    """checks if values can be placed anywhere else in row"""
+    for val in values:
+        check = True
+        for col in xrange(9):
+            boxi,boxj = (i, col)
+            if boxi == i and boxj == j:
+                continue
+            box = puzzle[boxi][boxj]
+            if val in box:
+                check = False
+                break
+        if check:
+            values = [val]
+            break
+    return values
+
+def checkColVals(puzzle, values, i, j):
+    """checks if values can be placed anywhere else in column"""
+    for val in values:
+        check = True
+        for row in xrange(9):
+            boxi,boxj = (row, j)
+            if boxi == i and boxj == j:
+                continue
+            box = puzzle[boxi][boxj]
+            if val in box:
+                check = False
+                break
+        if check:
+            values = [val]
+            break
+    return values
+
+def checkQuadVals(puzzle, values, i, j):
+    for val in values:
+        check = True
+        for coord in getQuad((i, j)):
+            boxi,boxj = coord
+            if boxi == i and boxj == j:
+                continue
+            box = puzzle[boxi][boxj]
+            if val in box:
+                check = False
+                break
+        if check:
+            values = [val]
+            break
+    return values
+
 def rmValues(values, rmValues):
     """returns list of values with rmValues removed"""
     for val in rmValues:
@@ -120,20 +170,20 @@ def solution(puzzle, zeros):
             puzzle[i][j] = values
             continue
 
+        # check to see if values can be placed anywhere else in row
+        values = checkRowVals(puzzle, values, i, j)
+        if len(values) == 1:
+            puzzle[i][j] = values
+            continue
+
+        # check to see if values can be placed anywhere else in column
+        values = checkColVals(puzzle, values, i, j)
+        if len(values) == 1:
+            puzzle[i][j] = values
+            continue
+
         # check to see if values can be placed anywhere else in quadrant
-        for val in values:
-            check = True
-            for coord in getQuad((i, j)):
-                boxi,boxj = coord
-                if boxi == i and boxj == j:
-                    continue
-                box = puzzle[boxi][boxj]
-                if val in box:
-                    check = False
-                    break
-            if check:
-                values = [val]
-                break
+        values = checkQuadVals(puzzle, values, i, j)
 
         puzzle[i][j] = values
         if len(values) != 1:
