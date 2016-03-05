@@ -1,209 +1,240 @@
-from collections import deque
+import sys
+sys.setrecursionlimit(10000)
 
-empty = [1,2,3,4,5,6,7,8,9]
-quad = [[] for x in xrange(9)]
+FLAG_POSSIBLE = 0
+FLAG_NOT_POSSIBLE = 1
+FLAG_SET_VAL = 2
 
-def makeQuad():
-    """constructs an array that has a list of all (i,j)'s for its
-       indexes quadrant"""
-    for i in xrange(9):
-        for j in xrange(9):
-            quad[3 * (i // 3) + (j // 3)].append((i,j))
+class Cell(object):
 
-def getQuad(x):
-    """returns a list of all (i,j)'s in the inputted (i,j)'s quadrant"""
-    i,j = x
-    return quad[3 * (i // 3) + (j // 3)]
+    def __init__(self, board, posx, posy, val, num_candidates=9):
+        self.board = board
+        self.posx = posx
+        self.posy = posy
+        self.val = val
+        self.num_candidates = num_candidates
+        
+        # setup candidates
+        if self.val == 0:
+            self.candidates = set(range(1, num_candidates+1))
+            self.fixed = False
+        else:
+            self.candidates = {val}
+            self.fixed = True
 
-def getInput(filename):
-    """reads in a sudoku puzzle from filename"""
-    f = open(filename, "r")
-    puzzle = []
-    zeros = []
-    for i in xrange(9):
-        line = f.readline().strip()
-        puz_line = []
-        for j in xrange(len(line)):
-            num = int(line[j])
-            if num == 0:
-                num = list(empty)
-                zeros.append((i, j))
-            else:
-                num = [num]
-            puz_line.append(num)
-        puzzle.append(puz_line)
-    f.close()
-    return (puzzle, zeros)
 
-def getRowVals(puzzle, row):
-    """returns list a definite values in the row"""
-    row_vals = []
-    for box in puzzle[row]:
-        if len(box) == 1:
-            row_vals.append(box[0])
-    return row_vals
+    def __len__(self):
+        return len(self.candidates)
 
-def getColVals(puzzle, col):
-    """returns list of definite values in the column"""
-    col_vals = []
-    for x in xrange(9):
-        box = puzzle[x][col]
-        if len(box) == 1:
-            col_vals.append(box[0])
-    return col_vals 
+    def __repr__(self):
+        return str(self.val)
 
-def getQuadVals(puzzle, quad):
-    """returns list of definite values in quadrant"""
-    quad_vals = []
-    for coord in quad:
-        boxi, boxj = coord
-        box = puzzle[boxi][boxj]
-        if len(box) == 1:
-            quad_vals.append(box[0])
-    return quad_vals
+    def get_val(self):
+        return self.val
 
-def checkRowVals(puzzle, values, i, j):
-    """checks if values can be placed anywhere else in row"""
-    for val in values:
-        check = True
-        for col in xrange(9):
-            boxi,boxj = (i, col)
-            if boxi == i and boxj == j:
-                continue
-            box = puzzle[boxi][boxj]
-            if val in box:
-                check = False
-                break
-        if check:
-            values = [val]
-            break
-    return values
+    def set_val(self, val):
+        self.val = val
+        if val != 0:
+            self.candidates = {val}
+        else:
+            self.candidates = set(range(1, self.num_candidates+1))
 
-def checkColVals(puzzle, values, i, j):
-    """checks if values can be placed anywhere else in column"""
-    for val in values:
-        check = True
-        for row in xrange(9):
-            boxi,boxj = (row, j)
-            if boxi == i and boxj == j:
-                continue
-            box = puzzle[boxi][boxj]
-            if val in box:
-                check = False
-                break
-        if check:
-            values = [val]
-            break
-    return values
+    def is_unique(self):
+        return len(self.candidates) == 1
 
-def checkQuadVals(puzzle, values, i, j):
-    for val in values:
-        check = True
-        for coord in getQuad((i, j)):
-            boxi,boxj = coord
-            if boxi == i and boxj == j:
-                continue
-            box = puzzle[boxi][boxj]
-            if val in box:
-                check = False
-                break
-        if check:
-            values = [val]
-            break
-    return values
+    def is_fixed(self):
+        return self.fixed
 
-def rmValues(values, rmValues):
-    """returns list of values with rmValues removed"""
-    for val in rmValues:
-        if val in values:
-            values.remove(val)
-    return values
-            
-def printPuzzle(puzzle):
-    for i in xrange(9):
-        if i != 0 and i % 3 == 0:
-            print "----------------"
-        line = ""
-        for j in xrange(9):
-            box = puzzle[i][j]
-            if len(box) == 1:
-                line += str(box[0])
-            else:
-                line += "0"
-            if j != 8 and j % 3 == 2:
-                line += "|"
-            else:
-                line += " "
-        print line
-            
-def solution(puzzle, zeros):
-    """returns a solved sudoku puzzle"""
-    zeros = deque(zeros)
-    max_iter = 10 ** 5
-    loop = 0
-    while zeros:
-        loop += 1
-        if loop > max_iter:
-            break
-        i,j = zeros.popleft()
-        values = puzzle[i][j]
+    def remove_candidate(self, val):
+        """Attempts to remove candidate
+        check if fixed
 
-        # check row
-        row_vals = getRowVals(puzzle, i)
-        values = rmValues(values, row_vals)
-        if len(values) == 1:
-            puzzle[i][j] = values
-            continue
+        Returns int:
+            FLAG_POSSIBLE
+            FLAG_NOT_POSSIBLE
+            FLAG_SET_VAL
+        """
+        pass
 
-        # check column
-        col_vals = getColVals(puzzle, j)
-        values = rmValues(values, col_vals)
-        if len(values) == 1:
-            puzzle[i][j] = values
-            continue
+    def add_candidate(self, val):
+        pass
 
-        # check quadrant
-        quad_vals = getQuadVals(puzzle, getQuad((i, j)))
-        values = rmValues(values, quad_vals)
-        puzzle[i][j] = values
-        if len(values) == 1:
-            puzzle[i][j] = values
-            continue
 
-        # check to see if values can be placed anywhere else in row
-        values = checkRowVals(puzzle, values, i, j)
-        if len(values) == 1:
-            puzzle[i][j] = values
-            continue
-
-        # check to see if values can be placed anywhere else in column
-        values = checkColVals(puzzle, values, i, j)
-        if len(values) == 1:
-            puzzle[i][j] = values
-            continue
-
-        # check to see if values can be placed anywhere else in quadrant
-        values = checkQuadVals(puzzle, values, i, j)
-
-        puzzle[i][j] = values
-        if len(values) != 1:
-            zeros.append((i, j))
+class Board(object):
     
-    return puzzle
+    def __init__(self, grid, num_boxes=3):
+        self.size = len(grid[0])
+        self.grid = [[] for _ in xrange(self.size)]
+        for i in xrange(self.size):
+            for j in xrange(self.size):
+                val = int(grid[i][j])
+                self.grid[i].append(Cell(self, i, j, val))
+        self.num_boxes = num_boxes
 
-def printHRSol(puzzle):
-    for i in xrange(9):
-        line = ""
-        for j in xrange(9):
-            box = puzzle[i][j]
-            if len(box) == 1:
-                line += str(box[0])
-            else:
-                line += "0"
-        print line
+        print '-------Starting Board------'
+        print self
+
+        # update empty cells
+        for i in xrange(self.size):
+            for j in xrange(self.size):
+                val = self.grid[i][j].get_val()
+                if val != 0:
+                    self.update_candidates(val, i, j)
+
+    def __repr__(self):
+        out = ""
+        for i in xrange(9):
+            line = ""
+            for j in xrange(9):
+                cell = self.grid[i][j].get_val()
+                if cell == 0:
+                    line += "_"
+                else:
+                    line += str(cell)
+            out += line + "\n"
+        return out
+
+    # def make_move(self, num, i, j):
+    #     """Tries to place num in cell (i, j)
+    #     """
+    #     pass
+
+    def update_candidates(self, num, i, j):
+        """Updates rows, columns, and grid
+        Make sure to update all current cells before updating cells 
+        that were set
+
+        Returns bool. True if valid update, False otherwise.
+        """
+        self.grid[i][j].set_val(num)
+
+        update_vals = []
+        for k in xrange(self.size):         # row
+            if k == j:
+                continue
+            res = self.grid[i][k].remove_candidate(num)
+            if isinstance(res, tuple):
+                update_vals.append(res)
+            elif not res:
+                return False
+
+        for k in xrange(self.size):         # col
+            if k == i:
+                continue
+            res = self.grid[k][j].remove_candidate(num)
+            if isinstance(res, tuple):
+                update_vals.append(res)
+            elif not res:
+                return False
+
+        i_start = (i / self.num_boxes) * self.num_boxes
+        j_start = (j / self.num_boxes) * self.num_boxes
+        for ki in xrange(i_start, i_start + self.num_boxes):        # box
+            for kj in xrange(j_start, j_start + self.num_boxes):
+                if ki == i and kj == j:
+                    continue
+                res = self.grid[ki][kj].remove_candidate(num)
+                if isinstance(res, tuple):
+                    update_vals.append(res)
+                elif not res:
+                    return False
+
+        # update all other cells that got set
+        res = [self.update_candidates(x,y,z) for x,y,z in update_vals]
+        if res:
+            return reduce(lambda x,y: x & y, res)
+        else:
+            return True
+
+    def unupdate_candidates(self, num, i, j):
+        pass
+
+    # def unmake_move(self, i, j):
+    #     """Clears cell (i, j)
+    #     Recursively call if adding value causes it to be len > 1
+    #     """
+    #     pass
+
+
+    def is_a_solution(self):
+        """Checks for a valid solution
+        """
+        res = True
+        for i in xrange(self.size):
+            for j in xrange(self.size):
+                res = res & (self.grid[i][j].is_unique() == 1)
+        return res
+
+    def next_move(self):
+        """Finds next move based on least ammount of candidates
+        """
+        min_candidates = self.size + 1
+        best_i = -1
+        best_j = -1
+        for i in xrange(self.size):
+            for j in xrange(self.size):
+                if self.grid[i][j].is_fixed():
+                    continue
+                n = len(self.grid[i][j])
+                if n < min_candidates and n != 1:
+                    best_i = i
+                    best_j = j
+        if len(self.grid[best_i][best_j].candidates) == 0:
+            raise Exception('Zero candidates')
+        return best_i, best_j
+
+    def row_contains_val(self, num, i, j):
+        res = False
+        for k in xrange(self.size):
+            if k == j:
+                continue
+            res = res | self.grid[i][k].get_val() == num
+        return res
+
+    def col_contains_val(self, num, i, j):
+        res = False
+        for k in xrange(self.size):
+            if k == i:
+                continue
+            res = res | self.grid[k][j].get_val() == num
+        return res
+    
+    def box_contains_val(self, num, i, j):
+        res = False
+        i_start = (i / self.num_boxes) * self.num_boxes
+        j_start = (j / self.num_boxes) * self.num_boxes
+        for ki in xrange(i_start, i_start + self.num_boxes):
+            for kj in xrange(j_start, j_start + self.num_boxes):
+                if ki == i and kj == j:
+                    continue
+                res = res | self.grid[ki][kj].get_val() == num
+        return res 
+
+
+def find_solution(board):
+
+    if board.is_a_solution():
+        print '------Solution------'
+        print board
+        return True
+    else:
+        i,j = board.next_move()
+        for num in board.grid[i][j].candidates:
+            print num
+            if not board.make_move(num, i, j):      # check if move is
+                print 'cant make move'
+                board.unmake_move(i, j)             # possible
+                continue
+            outcome = find_solution(board)
+            board.unmake_move(i, j)
+            if outcome:
+                return True
+    return False
 
 if __name__ == '__main__':
-    puzzle,zeros = getInput("input3.txt")
-    makeQuad()
-    sol = solution(puzzle, zeros)
-    printPuzzle(sol)
+    grid = []
+    with open('input3.txt', 'r') as f:
+        for line in f:
+            grid.append(line.strip())
+    board = Board(grid)
+    print find_solution(board)
