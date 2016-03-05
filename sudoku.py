@@ -1,10 +1,6 @@
 import sys
 sys.setrecursionlimit(10000)
 
-FLAG_POSSIBLE = 0
-FLAG_NOT_POSSIBLE = 1
-FLAG_SET_VAL = 2
-
 class Cell(object):
 
     def __init__(self, board, posx, posy, val, num_candidates=9):
@@ -49,14 +45,22 @@ class Cell(object):
         """Attempts to remove candidate
         check if fixed
 
-        Returns int:
-            FLAG_POSSIBLE
-            FLAG_NOT_POSSIBLE
-            FLAG_SET_VAL
+        Returns tuple or bool: Maybe fix to cleaner solution later
         """
-        pass
+        if self.is_fixed():
+            return True         # nothing to do so possible
+
+        if val in self.candidates:
+            self.candidates.remove(val)
+            if self.is_unique():
+                return (val, self.posx, self.posy)  # update at end
+            if len(self.candidates) == 0:
+                return False    # move not possible
+
+        return True             # nothing to do so possible
 
     def add_candidate(self, val):
+        #TODO
         pass
 
 
@@ -147,6 +151,10 @@ class Board(object):
             return True
 
     def unupdate_candidates(self, num, i, j):
+        """Clears cell (i, j)
+        Recursively call if adding value causes it to be len > 1
+        """
+        #TODO
         pass
 
     # def unmake_move(self, i, j):
@@ -221,19 +229,20 @@ def find_solution(board):
         i,j = board.next_move()
         for num in board.grid[i][j].candidates:
             print num
-            if not board.make_move(num, i, j):      # check if move is
+            # check if move is possible
+            if not board.update_candidates(num, i, j):
                 print 'cant make move'
-                board.unmake_move(i, j)             # possible
+                board.unupdate_candidates(i, j)             
                 continue
             outcome = find_solution(board)
-            board.unmake_move(i, j)
+            board.unupdate_candidates(i, j)
             if outcome:
                 return True
     return False
 
 if __name__ == '__main__':
     grid = []
-    with open('input3.txt', 'r') as f:
+    with open('input1.txt', 'r') as f:
         for line in f:
             grid.append(line.strip())
     board = Board(grid)
