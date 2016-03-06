@@ -1,5 +1,3 @@
-import sys
-sys.setrecursionlimit(10000)
 
 class Cell(object):
 
