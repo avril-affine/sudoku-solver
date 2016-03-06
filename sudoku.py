@@ -53,15 +53,34 @@ class Cell(object):
         if val in self.candidates:
             self.candidates.remove(val)
             if self.is_unique():
-                return (val, self.posx, self.posy)  # update at end
+                num = list(self.candidates)[0]
+                self.val = num
+                return (num, self.posx, self.posy)  # update at end
             if len(self.candidates) == 0:
                 return False    # move not possible
 
         return True             # nothing to do so possible
 
     def add_candidate(self, val):
-        #TODO
-        pass
+        """Attempts to add candidate to cell
+
+        Return bool: True if no other cells need to be updated.
+                     False otherwise.
+        """
+        if self.is_fixed() or val in self.candidates:
+            return True
+
+        # check if can add val to candidates
+        check = self.board.row_contains_val(val, self.posx, self.posy) | \
+                self.board.col_contains_val(val, self.posx, self.posy) | \
+                self.board.box_contains_val(val, self.posx, self.posy)
+        
+        if check:
+            return True         # nothing needs to be added
+
+        start = self.is_unique()
+        self.candidates.add(val)
+        return not start
 
 
 class Board(object):
@@ -83,40 +102,55 @@ class Board(object):
             for j in xrange(self.size):
                 val = self.grid[i][j].get_val()
                 if val != 0:
-                    self.update_candidates(val, i, j)
+                    res = self.make_move(val, i, j)
+                    if not res:
+                        raise Exception('Invalid Board')
+
+        # for i in xrange(self.size):
+        #     for j in xrange(self.size):
+        #         print i, j, self.grid[i][j].fixed
 
     def __repr__(self):
         out = ""
         for i in xrange(9):
             line = ""
             for j in xrange(9):
+                if j != 0 and j % 3 == 0:
+                    line += ' | '
                 cell = self.grid[i][j].get_val()
                 if cell == 0:
                     line += "_"
                 else:
                     line += str(cell)
+            if i != 0 and i % 3 == 0:
+                out += '-' * 15 + '\n'
             out += line + "\n"
         return out
 
-    # def make_move(self, num, i, j):
-    #     """Tries to place num in cell (i, j)
-    #     """
-    #     pass
 
-    def update_candidates(self, num, i, j):
+    def update_candidates(self, num, i, j, fwd):
         """Updates rows, columns, and grid
+        t 
         Make sure to update all current cells before updating cells 
         that were set
 
         Returns bool. True if valid update, False otherwise.
         """
-        self.grid[i][j].set_val(num)
+        if fwd:
+            self.grid[i][j].set_val(num)
+        else:
+            num = self.grid[i][j].get_val()
+            self.grid[i][j].set_val(0)
 
         update_vals = []
         for k in xrange(self.size):         # row
             if k == j:
                 continue
-            res = self.grid[i][k].remove_candidate(num)
+            if fwd:
+                res = self.grid[i][k].remove_candidate(num)
+            else:
+                res = self.grid[i][k].add_candidate(num)
+
             if isinstance(res, tuple):
                 update_vals.append(res)
             elif not res:
@@ -125,7 +159,11 @@ class Board(object):
         for k in xrange(self.size):         # col
             if k == i:
                 continue
-            res = self.grid[k][j].remove_candidate(num)
+            if fwd:
+                res = self.grid[k][j].remove_candidate(num)
+            else:
+                res = self.grid[k][j].add_candidate(num)
+
             if isinstance(res, tuple):
                 update_vals.append(res)
             elif not res:
@@ -137,32 +175,41 @@ class Board(object):
             for kj in xrange(j_start, j_start + self.num_boxes):
                 if ki == i and kj == j:
                     continue
-                res = self.grid[ki][kj].remove_candidate(num)
+                if fwd:
+                    res = self.grid[ki][kj].remove_candidate(num)
+                else:
+                    res = self.grid[ki][kj].add_candidate(num)
+
                 if isinstance(res, tuple):
                     update_vals.append(res)
                 elif not res:
                     return False
 
         # update all other cells that got set
-        res = [self.update_candidates(x,y,z) for x,y,z in update_vals]
+        res = [self.update_candidates(x,y,z,fwd) for x,y,z in update_vals]    
+
         if res:
             return reduce(lambda x,y: x & y, res)
         else:
             return True
 
-    def unupdate_candidates(self, num, i, j):
-        """Clears cell (i, j)
-        Recursively call if adding value causes it to be len > 1
-        """
-        #TODO
-        pass
-
-    # def unmake_move(self, i, j):
+    # def unupdate_candidates(self, num, i, j):
     #     """Clears cell (i, j)
     #     Recursively call if adding value causes it to be len > 1
     #     """
+    #     #TODO
     #     pass
 
+    def make_move(self, num, i, j):
+        """Tries to place num in cell (i, j)
+        """
+        return self.update_candidates(num, i, j, fwd=True)
+
+    def unmake_move(self, i, j):
+        """Clears cell (i, j)
+        Recursively call if adding value causes it to be len > 1
+        """
+        self.update_candidates(0, i, j, fwd=False)
 
     def is_a_solution(self):
         """Checks for a valid solution
@@ -228,10 +275,8 @@ def find_solution(board):
     else:
         i,j = board.next_move()
         for num in board.grid[i][j].candidates:
-            print num
             # check if move is possible
             if not board.update_candidates(num, i, j):
-                print 'cant make move'
                 board.unupdate_candidates(i, j)             
                 continue
             outcome = find_solution(board)
@@ -242,8 +287,8 @@ def find_solution(board):
 
 if __name__ == '__main__':
     grid = []
-    with open('input1.txt', 'r') as f:
+    with open('easy.txt', 'r') as f:
         for line in f:
             grid.append(line.strip())
     board = Board(grid)
-    print find_solution(board)
+    find_solution(board)
