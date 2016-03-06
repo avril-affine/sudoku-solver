@@ -1,3 +1,4 @@
+import sys
 
 class Cell(object):
 
@@ -72,13 +73,25 @@ class Cell(object):
         check = self.board.row_contains_val(val, self.posx, self.posy) | \
                 self.board.col_contains_val(val, self.posx, self.posy) | \
                 self.board.box_contains_val(val, self.posx, self.posy)
-        
+
         if check:
             return True         # nothing needs to be added
 
-        start = self.is_unique()
-        self.candidates.add(val)
-        return not start
+        if self.is_unique():
+            num = self.get_val()
+            self.val = 0
+            self.candidates.add(val)               # another cell needs to
+            return (num, self.posx, self.posy)     # be updated 
+        else:                                       
+            self.candidates.add(val)
+            return True
+
+        # start = self.is_unique()
+        # self.candidates.add(val)
+        # if start:
+        #     return (0, self.posx, self.posy)
+        # else:
+        #     return True
 
 
 class Board(object):
@@ -136,9 +149,6 @@ class Board(object):
         """
         if fwd:
             self.grid[i][j].set_val(num)
-        else:
-            num = self.grid[i][j].get_val()
-            self.grid[i][j].set_val(0)
 
         update_vals = []
         for k in xrange(self.size):         # row
@@ -207,7 +217,15 @@ class Board(object):
         """Clears cell (i, j)
         Recursively call if adding value causes it to be len > 1
         """
-        self.update_candidates(0, i, j, fwd=False)
+        num = self.grid[i][j].get_val()
+        self.grid[i][j].set_val(0)
+        for val in xrange(1, self.size+1):
+            check = self.row_contains_val(val, i, j) | \
+                    self.col_contains_val(val, i, j) | \
+                    self.box_contains_val(val, i, j)
+            if check:
+                self.grid[i][j].candidates.remove(val)
+        self.update_candidates(num, i, j, fwd=False)
 
     def is_a_solution(self):
         """Checks for a valid solution
@@ -241,7 +259,7 @@ class Board(object):
         for k in xrange(self.size):
             if k == j:
                 continue
-            res = res | self.grid[i][k].get_val() == num
+            res = res | (self.grid[i][k].get_val() == num)
         return res
 
     def col_contains_val(self, num, i, j):
@@ -249,7 +267,7 @@ class Board(object):
         for k in xrange(self.size):
             if k == i:
                 continue
-            res = res | self.grid[k][j].get_val() == num
+            res = res | (self.grid[k][j].get_val() == num)
         return res
     
     def box_contains_val(self, num, i, j):
@@ -260,7 +278,7 @@ class Board(object):
             for kj in xrange(j_start, j_start + self.num_boxes):
                 if ki == i and kj == j:
                     continue
-                res = res | self.grid[ki][kj].get_val() == num
+                res = res | (self.grid[ki][kj].get_val() == num)
         return res 
 
 
@@ -273,20 +291,48 @@ def find_solution(board):
     else:
         i,j = board.next_move()
         for num in board.grid[i][j].candidates:
+            print 'trying to add', num, 'to', i,j
+            #before = board.grid[i][j].candidates
+            before = str(board)
             # check if move is possible
-            if not board.update_candidates(num, i, j):
-                board.unupdate_candidates(i, j)             
+            if not board.make_move(num, i, j):
+                board.unmake_move(i, j)             
+                print 'unmade move', i,j,'val',num
+                if before != board:
+                    print 'board before:'
+                    print before
+                    print 'board after:'
+                    print board
+                    raise Exception('Unmake move did not unmake properly')
+                #print 'before candidates:', before
+                #print 'after candidates:', board.grid[i][j].candidates
                 continue
+            print 'added',num,'to',i,j
+            print board
             outcome = find_solution(board)
-            board.unupdate_candidates(i, j)
+            board.unmake_move(i, j)
+            print 'unmade move', i,j,'val',num
+            if before != board:
+                print 'board before:'
+                print before
+                print 'board after:'
+                print board
+                raise Exception('Unmake move did not unmake properly')
             if outcome:
                 return True
     return False
 
 if __name__ == '__main__':
     grid = []
-    with open('easy.txt', 'r') as f:
+    if len(sys.argv) == 2:
+        input_file = sys.argv[1]
+
+    with open(input_file, 'r') as f:
         for line in f:
             grid.append(line.strip())
     board = Board(grid)
     find_solution(board)
+
+    for i in xrange(board.size):
+        for j in xrange(board.size):
+            print i,j,board.grid[i][j].candidates
