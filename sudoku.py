@@ -1,10 +1,11 @@
 import sys
+import math
 
 
 class Board(object):
-    def __init__(self, grid, num_boxes=3):
+    def __init__(self, grid):
         self.size = len(grid[0])
-        self.num_boxes = 3
+        self.num_boxes = int(math.sqrt(self.size))
         self.grid = []
         self.fixed = []
         self.visited = []
@@ -123,6 +124,9 @@ if __name__ == '__main__':
     grid = []
     if len(sys.argv) == 2:
         input_file = sys.argv[1]
+    else:
+        print 'Specify test file path'
+        sys.exit()
 
     with open(input_file, 'r') as f:
         for line in f:
