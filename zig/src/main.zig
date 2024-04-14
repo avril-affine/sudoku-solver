@@ -1,20 +1,33 @@
 const std = @import("std");
 
-fn printBoard(board: *const *[9][9]u8) void {
-    for (0..9) |i| {
-        for (0..9) |j| {
-            const val = board.*[i][j];
-            if (val == 0) std.debug.print("_", .{}) else std.debug.print("{}", .{val});
-        }
-        std.debug.print("\n", .{});
+fn print(comptime fmt: []const u8, args: anytype, debug: bool) !void {
+    if (debug) {
+        std.debug.print(fmt, args);
+    } else {
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print(fmt, args);
     }
 }
 
-fn isSolution(board: *const *[9][9]u8) bool {
+fn printBoard(board: [9][9]u8, debug: bool) !void {
+    for (0..9) |i| {
+        for (0..9) |j| {
+            const val = board[i][j];
+            if (val == 0) {
+                try print("_", .{}, debug);
+            } else {
+                try print("{}", .{val}, debug);
+            }
+        }
+        try print("\n", .{}, debug);
+    }
+}
+
+fn isSolution(board: [9][9]u8) bool {
     for (0..9) |i| {
         var line = std.bit_set.IntegerBitSet(10).initEmpty();
         for (0..9) |j| {
-            const val = board.*[i][j];
+            const val = board[i][j];
             if (val == 0) {
                 return false;
             }
@@ -33,8 +46,8 @@ fn isSolution(board: *const *[9][9]u8) bool {
     return true;
 }
 
-fn isCandidate(board: *const *[9][9]u8, i: usize, j: usize, new_val: usize) bool {
-    if (board.*[i][j] != 0) {
+fn isCandidate(board: [9][9]u8, i: usize, j: usize, new_val: usize) bool {
+    if (board[i][j] != 0) {
         return false;
     }
 
@@ -42,7 +55,7 @@ fn isCandidate(board: *const *[9][9]u8, i: usize, j: usize, new_val: usize) bool
     for (0..9) |k| {
         if (k == i) continue;
 
-        const val = board.*[k][j];
+        const val = board[k][j];
         if ((val != 0) and (val == new_val)) {
             return false;
         }
@@ -52,7 +65,7 @@ fn isCandidate(board: *const *[9][9]u8, i: usize, j: usize, new_val: usize) bool
     for (0..9) |k| {
         if (k == j) continue;
 
-        const val = board.*[i][k];
+        const val = board[i][k];
         if ((val != 0) and (val == new_val)) {
             return false;
         }
@@ -65,7 +78,7 @@ fn isCandidate(board: *const *[9][9]u8, i: usize, j: usize, new_val: usize) bool
         for (qj..qj + 3) |kj| {
             if ((ki == i) and (kj == j)) continue;
 
-            const val = board.*[ki][kj];
+            const val = board[ki][kj];
             if (val == new_val) {
                 return false;
             }
@@ -75,25 +88,25 @@ fn isCandidate(board: *const *[9][9]u8, i: usize, j: usize, new_val: usize) bool
     return true;
 }
 
-fn slowSolve(board: *[9][9]u8) bool {
-    if (isSolution(&board)) return true;
-
-    for (0..9) |i| {
-        for (0..9) |j| {
-            const val = board[i][j];
-            if (val != 0) continue; // position already set
-
-            for (1..10) |new_val| {
-                if (isCandidate(&board, @intCast(i), @intCast(j), @intCast(new_val))) {
-                    board[i][j] = @intCast(new_val);
-                    if (slowSolve(board)) return true;
-                    board[i][j] = val;
-                }
-            }
-        }
-    }
-    return false;
-}
+// fn slowSolve(board: *[9][9]u8) bool {
+//     if (isSolution(&board)) return true;
+//
+//     for (0..9) |i| {
+//         for (0..9) |j| {
+//             const val = board[i][j];
+//             if (val != 0) continue; // position already set
+//
+//             for (1..10) |new_val| {
+//                 if (isCandidate(&board, @intCast(i), @intCast(j), @intCast(new_val))) {
+//                     board[i][j] = @intCast(new_val);
+//                     if (slowSolve(board)) return true;
+//                     board[i][j] = val;
+//                 }
+//             }
+//         }
+//     }
+//     return false;
+// }
 
 const Candidate = struct {
     i: usize,
@@ -106,7 +119,7 @@ const Candidate = struct {
 };
 
 fn solveLookAhead(board: *[9][9]u8) bool {
-    if (isSolution(&board)) return true;
+    if (isSolution(board.*)) return true;
 
     var best_count: usize = 10;
     var best_candidates: [9]Candidate = [_]Candidate{.{ 0, 0, 0 }} ** 9;
@@ -117,7 +130,7 @@ fn solveLookAhead(board: *[9][9]u8) bool {
             var candidates: [9]Candidate = [_]Candidate{.{ 0, 0, 0 }} ** 9;
             var cur_count: usize = 0;
             for (1..10) |val| {
-                if (isCandidate(&board, i, j, val)) {
+                if (isCandidate(board.*, i, j, val)) {
                     candidates[cur_count] = .{ .i = i, .j = j, .val = val };
                     cur_count += 1;
                 }
@@ -135,7 +148,6 @@ fn solveLookAhead(board: *[9][9]u8) bool {
     if (best_count == 10) return false; // no candidates
 
     for (0..best_count) |idx| {
-        // std.debug.print("{}\n", .{best_candidates[idx]});
         const i = best_candidates[idx].i;
         const j = best_candidates[idx].j;
         const old_val = board[i][j];
@@ -148,23 +160,11 @@ fn solveLookAhead(board: *[9][9]u8) bool {
 }
 
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
     const stdin = std.io.getStdIn().reader();
-
     var text: [90]u8 = undefined;
     _ = try stdin.read(&text);
 
-    var board = [9][9]u8{
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-    };
+    var board = std.mem.zeroes([9][9]u8);
 
     var lines = std.mem.splitScalar(u8, &text, '\n');
     for (0..9) |i| {
@@ -175,23 +175,18 @@ pub fn main() !void {
     }
 
     std.debug.print("------Starting Board------\n", .{});
-    printBoard(&&board);
+    try printBoard(board, true);
     std.debug.print("------Solution------\n", .{});
 
     const start = std.time.nanoTimestamp();
     // const res = slowSolve(&board);
     const res = solveLookAhead(&board);
     const end = std.time.nanoTimestamp();
-    if (!res) {
-        std.debug.print("no solution", .{});
-        return;
-    }
 
-    for (0..9) |i| {
-        for (0..9) |j| {
-            try stdout.print("{}", .{board[i][j]});
-        }
-        try stdout.print("\n", .{});
+    if (res) {
+        try printBoard(board, false);
+    } else {
+        std.debug.print("no solution", .{});
     }
     std.debug.print("solve took {} seconds\n", .{@as(f64, @floatFromInt(end - start)) / 1e9});
 }
